@@ -1,0 +1,101 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun  4 21:29:50 2025
+@author: Admin
+"""
+
+import streamlit as st
+import re
+import pickle
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# Page configuration
+st.set_page_config(page_title="📰 Fake News Detector", page_icon="🧠", layout="centered")
+
+# Custom CSS for a creative dark mode effect
+st.markdown("""
+    <style>
+        .main {
+            background-color: #1e1e1e;
+            color: white;
+        }
+        textarea {
+            background-color: #2e2e2e !important;
+            color: white !important;
+        }
+        .stButton>button {
+            background-color: #ff4b4b;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            background-color: #ff6666;
+            color: black !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# Title section
+st.markdown("<h1 style='text-align: center; color: #2e2e2e;'>📰 Fake News Detector</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>🔍 Check if a news article is fake or real using LSTM-powered AI!</p>", unsafe_allow_html=True)
+st.markdown("---")
+
+# Load model and tokenizer
+model = load_model(r"C:\Users\Admin\OneDrive\Desktop\fake_news_detection\lstm_fake_news_model.keras")
+with open(r"C:\Users\Admin\OneDrive\Desktop\fake_news_detection\tokenizer.pkl", "rb") as f:
+    tokenizer = pickle.load(f)
+
+MAX_LEN = 300
+
+# Text cleaning function
+def clean_text(text):
+    text = re.sub('[^a-zA-Z]', ' ', text)
+    return ' '.join(text.lower().split())
+
+# Sidebar: About
+with st.sidebar:
+    st.header("ℹ️ About this App")
+    st.write("""
+        This app uses a Long Short-Term Memory (LSTM) neural network to classify news as **Real** or **Fake**.
+        
+        - Built with TensorFlow
+        - Pretrained tokenizer
+        - Probability-based decision
+    """)
+
+# Text area input
+#default_text = "NASA has discovered a new planet capable of supporting human life."
+user_input = st.text_area("📝 Paste your news article here:", height=200)
+
+# Prediction
+if st.button("🚀 Predict"):
+    if not user_input.strip():
+        st.warning("Please enter a news article to analyze.")
+    else:
+        cleaned = clean_text(user_input)
+        seq = tokenizer.texts_to_sequences([cleaned])
+        padded = pad_sequences(seq, maxlen=MAX_LEN)
+        prob = model.predict(padded)[0][0]
+
+        # Display probability
+        st.markdown(f"### 🤖 Model Confidence Score: `{prob:.2f}`")
+
+        # Progress bar
+        st.progress(int(prob * 100))
+
+        # Decision and custom badge
+        if prob >= 0.5:
+            st.markdown(
+                "<h3 style='color: #e74c3c;'>🚨 Warning: This article is likely <strong>FAKE</strong>!</h3>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                "<h3 style='color: #2ecc71;'>✅ Great! This article is likely <strong>REAL</strong>.</h3>",
+                unsafe_allow_html=True
+            )
